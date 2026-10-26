@@ -75,7 +75,7 @@ def main(argv=None) -> int:
     bot = SupportBot(provider)
     results = [run_case(bot, c) for c in CASES]
     REPORTS.mkdir(exist_ok=True)
-    stamp = datetime.date.today().isoformat()
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d-%H%M")
     (REPORTS / f"{stamp}-{provider.name}.md").write_text(
         render(results, provider.name, provider.last_model or "n/a"), encoding="utf-8")
     (REPORTS / f"{stamp}-{provider.name}.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
