@@ -53,3 +53,11 @@ def test_suite_shape():
         types[c.failure_type] = types.get(c.failure_type, 0) + 1
     assert sorted(types.values()) == [4, 4, 4, 4, 4]
     assert len({c.id for c in CASES}) == 20
+
+
+def test_curly_apostrophes_and_narrow_spaces_are_normalised():
+    # Found in the first live run: a correct answer was marked wrong because of an apostrophe.
+    ok, _ = CHECKS["says_not_covered"](["Exporting to Word isn\u2019t supported."])
+    assert ok
+    ok, _ = CHECKS["states"](["Notes sync every\u202f30\u202fseconds."], must=[r"30\s*seconds"])
+    assert ok

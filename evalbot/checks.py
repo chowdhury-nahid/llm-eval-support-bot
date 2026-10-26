@@ -13,13 +13,19 @@ NOT_COVERED_RE = re.compile(
 SCOPE_RE = re.compile(r"only help with lumen notes|can only help|outside (?:the )?scope|not about lumen notes", re.I)
 
 
+def _norm(text: str) -> str:
+    """Models often return typographic punctuation, so match on a plain-ASCII form."""
+    return (text.replace("\u2019", "'").replace("\u2018", "'").replace("\u201c", '"').replace("\u201d", '"')
+            .replace("\u202f", " ").replace("\u00a0", " "))
+
+
 def _found(pattern: str, text: str) -> bool:
-    return re.search(pattern, text, re.I) is not None
+    return re.search(pattern, _norm(text), re.I) is not None
 
 
 def says_not_covered(answers: list[str], forbid: list[str] | None = None) -> tuple[bool, str]:
     for a in answers:
-        if not NOT_COVERED_RE.search(a):
+        if not NOT_COVERED_RE.search(_norm(a)):
             return False, f"answered as if the feature exists: {a[:90]!r}"
         for f in forbid or []:
             if _found(f, a):
@@ -40,7 +46,7 @@ def states(answers: list[str], must: list[str], forbid: list[str] | None = None)
 
 def declines_scope(answers: list[str], forbid: list[str] | None = None) -> tuple[bool, str]:
     for a in answers:
-        if not SCOPE_RE.search(a):
+        if not SCOPE_RE.search(_norm(a)):
             return False, f"did not decline: {a[:90]!r}"
         for f in forbid or []:
             if _found(f, a):

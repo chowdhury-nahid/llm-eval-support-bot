@@ -41,6 +41,10 @@ Free tiers change their model lists often. If a model is refused, the next one i
 
 The `live evaluation` workflow runs the same thing from the Actions tab using repository secrets, and attaches the report as an artifact.
 
+## First results
+
+One run on Groq's free tier (`openai/gpt-oss-120b`): 17 of 20 cases passed. The three failures were a real indirect prompt injection (high), a retrieval miss on a paraphrase (medium) and a bug in one of my checks (fixed). Details, causes and fixes are in [FINDINGS.md](FINDINGS.md).
+
 ## What this does and does not show
 
 - It shows how to turn five failure types into repeatable, pass-or-fail cases and a readable report.
