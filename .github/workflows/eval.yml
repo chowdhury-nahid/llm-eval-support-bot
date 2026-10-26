@@ -27,6 +27,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python -m evalbot.run --provider "${{ inputs.provider }}"
+      - name: Show the report on the run page
+        if: always()
+        run: cat reports/*.md >> "$GITHUB_STEP_SUMMARY" || true
       - name: Faithfulness score (optional)
         if: ${{ inputs.judge }}
         env:

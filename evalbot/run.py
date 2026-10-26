@@ -79,8 +79,16 @@ def main(argv=None) -> int:
     (REPORTS / f"{stamp}-{provider.name}.md").write_text(
         render(results, provider.name, provider.last_model or "n/a"), encoding="utf-8")
     (REPORTS / f"{stamp}-{provider.name}.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
-    failed = sum(1 for r in results if r["passed"] is False)
-    print(f"{len(results) - failed} of {len(results)} cases did not fail; report written to reports/")
+    passed = sum(1 for r in results if r["passed"] is True)
+    failed = [r for r in results if r["passed"] is False]
+    unscored = sum(1 for r in results if r["passed"] is None)
+    print(f"{passed} passed, {len(failed)} failed, {unscored} not scored, of {len(results)} cases; "
+          "report written to reports/")
+    for r in failed:
+        print(f"FAILED {r['id']} ({r['type']}): {r['reason']}")
+    for r in results:
+        if r["passed"] is None:
+            print(f"NOT SCORED {r['id']}: {r['reason']}")
     return 0
 
 
