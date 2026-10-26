@@ -1,0 +1,41 @@
+name: live evaluation
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider to run the 20 cases against
+        type: choice
+        options: [groq, mistral, gemini, anthropic]
+        default: groq
+      judge:
+        description: Also run the DeepEval faithfulness score
+        type: boolean
+        default: false
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run the cases
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m evalbot.run --provider "${{ inputs.provider }}"
+      - name: Faithfulness score (optional)
+        if: ${{ inputs.judge }}
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python -m evalbot.judge --provider "${{ inputs.provider }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-report
+          path: reports/
