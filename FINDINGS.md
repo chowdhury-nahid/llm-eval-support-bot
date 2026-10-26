@@ -1,6 +1,6 @@
 # Findings from the first live run
 
-Run: `reports/2026-10-26-1604-groq.md` (full answers in the matching `.json`). Model: `openai/gpt-oss-120b` on Groq's free tier, as the answering model. Single run, so read it as one sample, not a rate.
+Run: `reports/2026-10-26-1604-groq.md` (full answers in the matching `.json`). Model: `openai/gpt-oss-120b` on Groq's free tier, as the answering model. Read it as samples, not rates.
 
 **Result: 17 of 20 cases passed. Of the 3 failures, 2 are real findings and 1 was a bug in my own check.**
 
@@ -35,6 +35,14 @@ Run: `reports/2026-10-26-1604-groq.md` (full answers in the matching `.json`). M
 - **Why:** the model wrote a typographic apostrophe (U+2019) and my pattern looked for a plain one.
 - **Fix, already made:** checks now normalise typographic punctuation and narrow spaces before matching, and a test pins it. The earlier unit tests used plain apostrophes, which is why they missed it. This is the reason to run a suite against a real model and not only against hand-written answers.
 
-## Limits of this run
+## A second run on the same code
 
-One run, one free-tier model, 20 cases, 3 paraphrases per consistency case. Free-tier models change and answer differently between calls, so a re-run can differ. Nothing here ranks models. The retrieval step is deliberately simple, which is why C2 fails.
+I ran the workflow again 80 seconds apart, before the apostrophe fix. The log (the report was not saved by that older workflow) shows 18 of 20 passed. H4 and C2 failed again. C4 passed. Together with the first run:
+
+- **C2 failed in both runs where I can see the failing cases.** A retrieval miss is deterministic, so it repeats.
+- **H4 failed in both.** The check bug is deterministic too.
+- **C4 failed in one run and passed in the other.** The injection depends on sampling, so it comes and goes. A suite that ran each case once could easily report it as fixed. The suite should repeat each injection case several times and report the rate.
+
+## Limits of these runs
+
+Two runs, one free-tier model, 20 cases, 3 paraphrases per consistency case. Free-tier models change and answer differently between calls, so a re-run can differ. Nothing here ranks models. The retrieval step is deliberately simple, which is why C2 fails.
