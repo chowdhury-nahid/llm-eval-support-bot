@@ -41,27 +41,43 @@ ANTHROPIC_DEFAULT_MODELS = "claude-haiku-4-5"
 
 PROVIDER_NAMES = ["groq", "mistral", "gemini", "anthropic", "offline"]
 
+# Seconds to leave between two live calls, so a free tier is not hit in a burst.
+# Override with the EVAL_DELAY_SECONDS variable or the --delay option. Offline runs never wait.
+DEFAULT_DELAY_SECONDS = 1.0
+
 
 class Provider:
     """Base class. `chat` returns the reply text for one system and one user message."""
 
     name = "base"
 
-    def __init__(self, models: list[str]):
+    def __init__(self, models: list[str], min_interval: float = 0.0):
         self.models = models
         self.last_model = ""
+        self.min_interval = min_interval
+        self._last_call: float | None = None
         self._skip: set[str] = set()
+
+    def _pace(self) -> None:
+        """Wait until at least `min_interval` seconds have passed since the previous call."""
+        if self.min_interval > 0 and self._last_call is not None:
+            wait = self.min_interval - (time.monotonic() - self._last_call)
+            if wait > 0:
+                time.sleep(wait)
 
     def chat(self, system: str, user: str, temperature: float = 0.0) -> str:
         last_error = "no model available"
         for model in self.models:
             if model in self._skip:
                 continue
+            self._pace()
             try:
                 text = self._call(model, system, user, temperature)
             except ProviderError as exc:
                 last_error = f"{model}: {exc}"
                 continue
+            finally:
+                self._last_call = time.monotonic()
             self.last_model = model
             return text
         raise ProviderError(last_error)
@@ -88,8 +104,8 @@ class Provider:
 
 
 class OpenAICompatible(Provider):
-    def __init__(self, name: str, models: list[str], url: str, key: str):
-        super().__init__(models)
+    def __init__(self, name: str, models: list[str], url: str, key: str, min_interval: float = 0.0):
+        super().__init__(models, min_interval)
         self.name, self.url, self.key = name, url, key
 
     def _call(self, model, system, user, temperature):
@@ -112,8 +128,8 @@ class OpenAICompatible(Provider):
 class Anthropic(Provider):
     name = "anthropic"
 
-    def __init__(self, models: list[str], key: str):
-        super().__init__(models)
+    def __init__(self, models: list[str], key: str, min_interval: float = 0.0):
+        super().__init__(models, min_interval)
         self.key = key
 
     def _call(self, model, system, user, temperature):
@@ -147,21 +163,36 @@ class Offline(Provider):
         return first or "That is not covered in the documentation."
 
 
-def get_provider(name: str | None = None) -> Provider:
+def resolve_delay(delay: float | None = None) -> float:
+    """The pause between live calls: the argument, else EVAL_DELAY_SECONDS, else the default."""
+    raw = delay if delay is not None else os.environ.get("EVAL_DELAY_SECONDS")
+    if raw is None or raw == "":
+        return DEFAULT_DELAY_SECONDS
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        raise ProviderError(f"delay must be a number of seconds, got {raw!r}") from None
+    if value < 0:
+        raise ProviderError("delay must not be negative")
+    return value
+
+
+def get_provider(name: str | None = None, delay: float | None = None) -> Provider:
     name = (name or os.environ.get("EVAL_PROVIDER") or "offline").lower()
     if name == "offline":
         return Offline()
+    interval = resolve_delay(delay)
     if name == "anthropic":
         key = os.environ.get("ANTHROPIC_API_KEY", "")
         if not key:
             raise ProviderError("ANTHROPIC_API_KEY is not set")
         models = os.environ.get("ANTHROPIC_MODEL", ANTHROPIC_DEFAULT_MODELS)
-        return Anthropic([m.strip() for m in models.split(",") if m.strip()], key)
+        return Anthropic([m.strip() for m in models.split(",") if m.strip()], key, interval)
     if name in OPENAI_COMPATIBLE:
         url, key_var, model_var, default = OPENAI_COMPATIBLE[name]
         key = os.environ.get(key_var, "")
         if not key:
             raise ProviderError(f"{key_var} is not set")
         models = os.environ.get(model_var, default)
-        return OpenAICompatible(name, [m.strip() for m in models.split(",") if m.strip()], url, key)
+        return OpenAICompatible(name, [m.strip() for m in models.split(",") if m.strip()], url, key, interval)
     raise ProviderError(f"unknown provider '{name}', expected one of {PROVIDER_NAMES}")
