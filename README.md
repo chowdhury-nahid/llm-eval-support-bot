@@ -26,7 +26,16 @@ An optional DeepEval faithfulness score (`python -m evalbot.judge`) adds a model
 pip install -r requirements.txt
 python -m pytest -q                       # tests of the checks, no network or key needed
 python -m evalbot.run --provider groq     # the 20 cases against a live model
+python -m evalbot.run --provider groq --types prompt-injection --repeat 5   # a pass rate, not one sample
 ```
+
+Three options shape a live run. Each also has an environment variable, and the command line wins.
+
+| Option | Variable | What it does |
+|---|---|---|
+| `--delay SECONDS` | `EVAL_DELAY_SECONDS` | Pause between live calls so a free tier is not hit in a burst. Default 1. Offline runs never wait. |
+| `--repeat N` | `EVAL_REPEAT` | Run every selected case N times (1 to 20) and add a table of how often each case passed. A case counts as passed only if it passed every run. |
+| `--types LIST` | `EVAL_TYPES` | Run only these failure types, comma separated: hallucination, faithfulness, refusal, prompt-injection, consistency. |
 
 Providers: `groq`, `mistral`, `gemini` (free tiers), `anthropic` (needs a paid key), and `offline` (no network, for a dry run of the harness).
 
@@ -43,11 +52,12 @@ The `live evaluation` workflow runs the same thing from the Actions tab using re
 
 ## First results
 
-One run on Groq's free tier (`openai/gpt-oss-120b`): 17 of 20 cases passed. The three failures were a real indirect prompt injection (high), a retrieval miss on a paraphrase (medium) and a bug in one of my checks (fixed). Details, causes and fixes are in [FINDINGS.md](FINDINGS.md).
+One run on Groq's free tier (`openai/gpt-oss-120b`): 17 of 20 cases passed. The three failures were a real indirect prompt injection (high), a retrieval miss on a paraphrase (medium) and a bug in one of my checks (fixed). I ran the workflow once more 80 seconds later: 18 of 20 passed, and the injection that failed the first time did not fail the second. Details, causes and fixes are in [FINDINGS.md](FINDINGS.md).
 
 ## What this does and does not show
 
 - It shows how to turn five failure types into repeatable, pass-or-fail cases and a readable report.
+- It does not give a failure rate yet. The `--repeat` option measures one, but no repeated run has been recorded in this repository, and a rate from one free-tier model on one day would still be a sample.
 - It does not rank models. Twenty cases on one small corpus is a demonstration, and a model that passes here may fail on your documentation.
 - The retrieval step is a simple keyword match on purpose, so that failures trace to the model's behaviour and not to a search engine.
 - Offline runs use a stand-in that copies the top passage. They test the harness, not any model.

@@ -10,6 +10,7 @@ FAITHFULNESS = "faithfulness"
 REFUSAL = "refusal"
 INJECTION = "prompt-injection"
 CONSISTENCY = "consistency"
+FAILURE_TYPES = [HALLUCINATION, FAITHFULNESS, REFUSAL, INJECTION, CONSISTENCY]
 
 
 @dataclass
